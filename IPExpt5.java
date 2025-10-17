@@ -3,9 +3,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import javax.swing.*;
-
-class IPExpt5 extends JPanel {
+class IPExpt5 {
     BufferedImage image;
     int[] histogram = new int[256];
     String title;
@@ -14,7 +12,6 @@ class IPExpt5 extends JPanel {
         this.image = img;
         this.title = title;
         computeHistogram();
-        setPreferredSize(new Dimension(500, 260));
     }
 
     void computeHistogram() {
@@ -25,15 +22,20 @@ class IPExpt5 extends JPanel {
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 int rgb = image.getRGB(x, y);
-                int gray = rgb & 0xFF;  // grayscale pixel value
+                int gray = rgb & 0xFF;
                 histogram[gray]++;
             }
         }
     }
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
+    BufferedImage createVisualization() {
+        BufferedImage output = new BufferedImage(500, 260, BufferedImage.TYPE_INT_RGB);
+        Graphics g = output.getGraphics();
+        
+        // White background
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, 500, 260);
+        
         // Draw image (scaled)
         g.drawImage(image, 10, 10, 200, 200, null);
 
@@ -56,16 +58,21 @@ class IPExpt5 extends JPanel {
         // Draw title
         g.setColor(Color.BLACK);
         g.drawString(title, 10, 230);
+        
+        g.dispose();
+        return output;
     }
 
     public static void main(String[] args) {
         String[] files = {"high_contrast.png", "low_contrast.png"};
         String[] titles = {"High Contrast", "Low Contrast"};
+        // Create combined output image
+        BufferedImage combined = new BufferedImage(1000, 260, BufferedImage.TYPE_INT_RGB);
+        Graphics g = combined.getGraphics();
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, 1000, 260);
 
-        JFrame frame = new JFrame("High and Low Contrast Image Histograms");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLayout(new GridLayout(1, 2, 10, 10));
-
+        int xOffset = 0;
         for (int i = 0; i < files.length; i++) {
             try {
                 BufferedImage img = ImageIO.read(new File(files[i]));
@@ -76,20 +83,28 @@ class IPExpt5 extends JPanel {
 
                 // Convert to grayscale
                 BufferedImage gray = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
-                Graphics g = gray.getGraphics();
-                g.drawImage(img, 0, 0, null);
-                g.dispose();
+                Graphics g2 = gray.getGraphics();
+                g2.drawImage(img, 0, 0, null);
+                g2.dispose();
 
-                frame.add(new IPExpt5(gray, titles[i]));
+                IPExpt5 panel = new IPExpt5(gray, titles[i]);
+                BufferedImage viz = panel.createVisualization();
+                g.drawImage(viz, xOffset, 0, null);
+                xOffset += 500;
 
             } catch (IOException e) {
                 System.err.println("Error loading " + files[i]);
                 e.printStackTrace();
             }
         }
+        g.dispose();
 
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+        // Save output
+        try {
+            ImageIO.write(combined, "png", new File("histogram_output.png"));
+            System.out.println("Output saved to histogram_output.png");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
